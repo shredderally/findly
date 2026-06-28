@@ -95,6 +95,11 @@ export default function App() {
             <div className="phone">+233 •• ••• ••••</div>
             <div className="unlock-hint">1 free unlock this month →</div>
           </div>
+          <div className="card">
+             <div className="biz">Sani's Graphic design</div>div>
+             <div className="cat-loc">Graphic designer . Abossey okai</div>
+             <div ClassName="phone">+23 50 418 6141</div>div>
+          </div>
           <button className="btn btn-clay" onClick={() => setView('browse')}>Start browsing</button>
         </div>
       </div>
