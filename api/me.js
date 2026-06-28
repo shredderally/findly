@@ -1,8 +1,4 @@
-// api/me.js
-// Silent session refresh — same role as Applo's me.js: keeps the client's
-// cached tier/unlock data in sync with whatever's actually true in the DB
-// (e.g. after you manually upgrade someone's tier in Supabase).
-
+// api/me.js — business profile + verification + listing status
 import { createClient } from '@supabase/supabase-js';
 import { verifySession } from './_session.js';
 
@@ -18,20 +14,23 @@ export default async function handler(req, res) {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '');
     const session = verifySession(token);
-
     if (!session) return res.status(401).json({ error: 'Invalid or expired session.' });
 
-    const { data: consumer, error } = await supabase
-      .from('consumers')
-      .select('email, tier, unlocks_used, unlocks_reset')
+    const { data: business, error } = await supabase
+      .from('businesses')
+      .select(`
+        email, full_legal_name, business_name, category, description, ghpost_gps_address,
+        phone, whatsapp, rating, review_count, verification_status,
+        pledge_accepted, listing_active, listing_expires_at
+      `)
       .eq('email', session.email)
       .single();
 
-    if (error || !consumer) return res.status(404).json({ error: 'Account not found.' });
+    if (error || !business) return res.status(404).json({ error: 'Account not found.' });
 
-    return res.status(200).json(consumer);
+    return res.status(200).json(business);
   } catch (err) {
     console.error('Me error:', err.message);
     return res.status(500).json({ error: 'Something went wrong.' });
   }
-  }
+}
