@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import './index.css';
 
-const CATEGORIES = ['plumber', 'electrician', 'AC repair', 'mover', 'tutor', 'mechanic'];
+const CATEGORIES =["AC Technician", "Architect", "Auto Electrician", "Baker", "Barber", "Borehole Digger", "Cabinet Maker", "Cake Decorator", "Carpenter", "Car Washer", "Caregiver", "Caterer", "CCTV Camera Installer", "Contractor", "Courier", "Delivery Rider", "DJ", "Domestic Cleaner", "Draughtsman", "Driving School Instructor", "Dry Cleaner", "DSTV Installer", "Electrician", "Electronic Repairer", "Event Decorator", "Event Planner", "Fabricator", "Fashion Designer", "Fumigation Specialist", "Generator Repairer", "Graphic Designer", "Gym Instructor", "Hairdresser", "Home Tutor", "Interior Designer", "Laptop Repairer", "Laundryman", "Mason", "Massage Therapist", "Master of Ceremonies (MC)", "Mechanic", "Music Instructor", "Nail Technician", "Office Cleaner", "Painter", "Pest Control Specialist", "Phone Repairer", "Photographer", "Physiotherapist", "Plumber", "POP Ceiling Designer", "Post-Construction Cleaner", "Private Driver", "Private Nurse", "Quantity Surveyor", "Seamstress", "Site Supervisor", "Social Media Manager", "Spa Worker", "Tailor", "Tiler", "Towing Service", "Translator", "Video Editor", "Videographer", "Web Developer", "Welder"];
+                    '];
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
