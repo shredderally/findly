@@ -114,7 +114,7 @@ export default function App() {
   function Header() {
     return (
       <div className="header-bar">
-        <div className="header-logo" onClick={() => setView('landing')}>Findly</div>
+        <div className="header-logo" onClick={() => setView('landing')}>Findly</div> 
         <div className="header-nav">
           <a onClick={() => setView('browse')}>Browse</a>
           {!token && (<><a onClick={() => setView('signin')}>Sign in</a>
