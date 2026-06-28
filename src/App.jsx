@@ -77,6 +77,18 @@ export default function App() {
     } catch {}
   }
 
+  async function handleUpgrade() {
+    if (!token) { setView('signup'); return; }
+    try {
+      const res = await fetch('/api/paystack-initialize', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.authorization_url) window.location.href = data.authorization_url;
+    } catch {}
+  }
+
   function Stars({ rating, reviewCount }) {
     if (!reviewCount || reviewCount === 0) return <span className="badge-new">NEW</span>;
     return <span className="rating">★ {rating.toFixed(1)} ({reviewCount})</span>;
@@ -95,8 +107,6 @@ export default function App() {
             <div className="phone">+233 •• ••• ••••</div>
             <div className="unlock-hint">1 free unlock this month →</div>
           </div>
-          <div className="card">
-             <
           <button className="btn btn-clay" onClick={() => setView('browse')}>Start browsing</button>
         </div>
       </div>
@@ -120,7 +130,7 @@ export default function App() {
         {upgradePrompt && (
           <div className="upgrade-box">
             <p>You've used your free unlock this month. Upgrade for unlimited.</p>
-            <button className="btn btn-clay">Upgrade to Pro</button>
+            <button className="btn btn-clay" onClick={handleUpgrade}>Upgrade to Pro</button>
           </div>
         )}
 
@@ -156,7 +166,9 @@ export default function App() {
 
         {me && (
           <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 12, fontFamily: 'var(--fm)', padding: '8px 20px 24px' }}>
-            {me.tier === 'free' ? `${me.unlocks_used}/1 free unlocks used this month` : 'Pro · unlimited unlocks'}
+            {me.tier === 'pro' && me.pro_expires_at && new Date(me.pro_expires_at) > new Date()
+              ? `Pro · unlimited until ${new Date(me.pro_expires_at).toLocaleDateString()}`
+              : `${me.unlocks_used}/1 free unlocks used this month`}
           </div>
         )}
       </div>
@@ -210,5 +222,5 @@ export default function App() {
   }
 
   return null;
-    }
-                                   
+        }
+        
