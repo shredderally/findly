@@ -211,4 +211,4 @@ export default function App() {
         <Header />
         <div className="auth-pg" style={{ minHeight: 'calc(100vh - 120px)' }}>
           <div
-                                                                             
+        
