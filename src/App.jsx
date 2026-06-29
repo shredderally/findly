@@ -1,30 +1,38 @@
 import { useState, useEffect } from 'react';
 import './index.css';
 
-const CATEGORIES = [
-  "AC Technician", "Architect", "Auto Electrician", "Baker", "Barber", "Borehole Digger", "Cabinet Maker", "Cake Decorator", "Carpenter", "Car Washer", "Caregiver", "Caterer", "CCTV Camera Installer", "Contractor", "Courier", "Delivery Rider", "DJ", "Domestic Cleaner", "Draughtsman", "Driving School Instructor", "Dry Cleaner", "DSTV Installer", "Electrician", "Electronic Repairer", "Event Decorator", "Event Planner", "Fabricator", "Fashion Designer", "Fumigation Specialist", "Generator Repairer", "Graphic Designer", "Gym Instructor", "Hairdresser", "Home Tutor", "Interior Designer", "Laptop Repairer", "Laundryman", "Mason", "Massage Therapist", "Master of Ceremonies (MC)", "Mechanic", "Music Instructor", "Nail Technician", "Office Cleaner", "Painter", "Pest Control Specialist", "Phone Repairer", "Photographer", "Physiotherapist", "Plumber", "POP Ceiling Designer", "Post-Construction Cleaner", "Private Driver", "Private Nurse", "Quantity Surveyor", "Seamstress", "Site Supervisor", "Social Media Manager", "Spa Worker", "Tailor", "Tiler", "Towing Service", "Translator", "Video Editor", "Videographer", "Web Developer", "Welder"
-];
+const CATEGORIES = ['plumber', 'electrician', 'AC repair', 'mover', 'tutor', 'mechanic'];
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve(null);
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function App() {
-  const [view, setView] = useState('landing'); // landing | browse | signin | signup
+  const [view, setView] = useState('landing'); // landing | browse | signin | signup | dashboard
+  const [step, setStep] = useState(1); // signup wizard step, 1-4
   const [token, setToken] = useState(localStorage.getItem('findly_token') || null);
   const [me, setMe] = useState(null);
   const [listings, setListings] = useState([]);
   const [category, setCategory] = useState('');
-  const [unlocked, setUnlocked] = useState({}); // listingId -> { phone, whatsapp }
-  const [upgradePrompt, setUpgradePrompt] = useState(false);
   const [authError, setAuthError] = useState('');
-  const [authForm, setAuthForm] = useState({ email: '', password: '' });
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // New state for password toggle
   const [loadedAt] = useState(Date.now());
 
-  useEffect(() => {
-    if (token) refreshMe();
-  }, [token]);
+  const [form, setForm] = useState({
+    email: '', password: '', fullLegalName: '', phone: '', whatsapp: '',
+    businessName: '', category: 'plumber', description: '', ghpostGps: '',
+    profilePhoto: null, idDocFront: null, idDocBack: null, livenessSelfie: null, professionalLicense: null,
+    pledgeAccepted: false,
+  });
 
-  useEffect(() => {
-    if (view === 'browse') runSearch();
-  }, [view, category]);
+  useEffect(() => { if (token) refreshMe(); }, [token]);
+  useEffect(() => { if (view === 'browse') runSearch(); }, [view, category]);
 
   async function refreshMe() {
     try {
@@ -41,190 +49,166 @@ export default function App() {
     setListings(data.listings || []);
   }
 
-  async function handleAuth(e, mode) {
+  async function handleSignin(e) {
     e.preventDefault();
     setAuthError('');
     try {
-      const body = mode === 'signup' ? { ...authForm, hp: '', loadedAt } : authForm;
-      const res = await fetch(`/api/${mode}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+      const res = await fetch('/api/signin', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email, password: form.password }),
       });
       const data = await res.json();
-      if (!res.ok) { setAuthError(data.error || 'Something went wrong.'); return; }
+      if (!res.ok) { setAuthError(data.error); return; }
       localStorage.setItem('findly_token', data.token);
       setToken(data.token);
-      setView('browse');
-    } catch {
-      setAuthError('Network error. Try again.');
-    }
+      setView('dashboard');
+    } catch { setAuthError('Network error. Try again.'); }
   }
 
-  async function handleUnlock(listingId) {
-    if (!token) { setView('signup'); return; }
-    setUpgradePrompt(false);
+  // Step 1 -> 2 -> creates account (signup.js) -> Step 3 -> 4 -> uploads docs
+  async function handleStep2Submit(e) {
+    e.preventDefault();
+    setAuthError('');
     try {
-      const res = await fetch('/api/unlock-contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ listingId }),
+      const res = await fetch('/api/signup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, hp: '', loadedAt }),
       });
       const data = await res.json();
-      if (res.status === 402) { setUpgradePrompt(true); return; }
-      if (!res.ok) return;
-      setUnlocked(prev => ({ ...prev, [listingId]: data }));
-      refreshMe();
+      if (!res.ok) { setAuthError(data.error); return; }
+      localStorage.setItem('findly_token', data.token);
+      setToken(data.token);
+      setStep(3);
+    } catch { setAuthError('Network error. Try again.'); }
+  }
+
+  async function handleFinalSubmit(e) {
+    e.preventDefault();
+    setAuthError('');
+    if (!form.pledgeAccepted) { setAuthError('You must accept the pledge to continue.'); return; }
+    try {
+      const [profilePhoto, idDocFront, idDocBack, livenessSelfie, professionalLicense] = await Promise.all([
+        fileToBase64(form.profilePhoto), fileToBase64(form.idDocFront),
+        fileToBase64(form.idDocBack), fileToBase64(form.livenessSelfie), fileToBase64(form.professionalLicense),
+      ]);
+      const res = await fetch('/api/upload-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ profilePhoto, idDocFront, idDocBack, livenessSelfie, professionalLicense, pledgeAccepted: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setAuthError(data.error); return; }
+      await refreshMe();
+      setView('dashboard');
+    } catch { setAuthError('Upload failed. Try again.'); }
+  }
+
+  async function handleActivate() {
+    try {
+      const res = await fetch('/api/paystack-initialize', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.authorization_url) window.location.href = data.authorization_url;
     } catch {}
   }
 
+  function Header() {
+    return (
+      <div className="header-bar">
+        <div className="header-logo" onClick={() => setView('landing')}>Findly</div>
+        <div className="header-nav">
+          <a onClick={() => setView('browse')}>Browse</a>
+          {!token && (<><a onClick={() => { setView('signin'); setShowPassword(false); }}>Sign in</a>
+            <button className="btn-nav-cta" onClick={() => { setStep(1); setView('signup'); setShowPassword(false); }}>List your business</button></>)}
+          {token && <button className="btn-nav-cta" onClick={() => setView('dashboard')}>My listing</button>}
+        </div>
+      </div>
+    );
+  }
+  
+  function Footer() { 
+    return <div className="footer-bar"><div style={{ opacity: 0.8 }}>Powered by Northbound Holdings</div></div>; 
+  }
+  
   function Stars({ rating, reviewCount }) {
-    if (!reviewCount || reviewCount === 0) return <span className="badge-new">NEW</span>;
+    if (!reviewCount) return <span className="badge-new">NEW</span>;
     return <span className="rating">★ {rating.toFixed(1)} ({reviewCount})</span>;
   }
+  
+  function set(field) { return e => setForm({ ...form, [field]: e.target.value }); }
+  function setFile(field) { return e => setForm({ ...form, [field]: e.target.files[0] }); }
 
-  // ---------- VIEW ROUTER ----------
-  switch (view) {
-    case 'landing':
-      return (
-        <div className="app">
-          <div className="hero">
-            <h1>Find people<br/>who <span className="accent">actually show up.</span></h1>
-            <p>Browse vetted local plumbers, electricians, tutors and more — free. See their real number when you're ready.</p>
-            <div className="teaser-card">
-              <div className="biz">Kofi's Electrical</div>
-              <div className="cat-loc">Electrician · East Legon</div>
-              <div className="phone">+233 •• ••• ••••</div>
-              <div className="unlock-hint">1 free unlock this month →</div>
-            </div>
-            <button className="btn btn-clay" onClick={() => setView('browse')}>Start browsing</button>
+  if (view === 'landing') return (
+    <div className="app"><Header />
+      <div className="hero">
+        <h1>Get found by<br/><span className="accent">real, verified customers.</span></h1>
+        <p>Every provider here is identity-checked. List your business — customers browse and contact you for free.</p>
+        <button className="btn btn-clay" onClick={() => { setStep(1); setView('signup'); setShowPassword(false); }}>List your business</button>
+        <div style={{ marginTop: 12 }}><a style={{ color: 'var(--muted)', fontSize: 14, cursor: 'pointer' }} onClick={() => setView('browse')}>Or browse as a customer →</a></div>
+      </div>
+      <Footer />
+    </div>
+  );
+
+  if (view === 'browse') return (
+    <div className="app"><Header />
+      <div className="search-bar" style={{ marginTop: 16 }}>
+        <select value={category} onChange={e => setCategory(e.target.value)}>
+          <option value="">All categories</option>
+          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+      {listings.length === 0 && <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px 20px' }}>No verified listings yet for this category.</div>}
+      {listings.map(l => (
+        <div className="listing" key={l.id}>
+          <div className="listing-top">
+            <div><div className="biz">{l.business_name}</div><div className="cat-loc">{l.category} · {l.ghpost_gps_address || '—'}</div></div>
+            <span className="badge-verified">✓ ID VERIFIED</span>
           </div>
+          <Stars rating={l.rating} reviewCount={l.review_count} />
+          {l.description && <div className="desc">{l.description}</div>}
+          <div className="contact-row"><span className="contact-revealed">{l.phone}{l.whatsapp ? ` · WhatsApp ${l.whatsapp}` : ''}</span></div>
         </div>
-      );
+      ))}
+      <Footer />
+    </div>
+  );
 
-    case 'browse':
-      return (
-        <div className="app">
-          <div style={{ padding: '20px 20px 0' }}>
-            <div style={{ fontFamily: 'var(--fd)', fontSize: 22, fontWeight: 600 }}>Findly</div>
-          </div>
-          <div className="search-bar" style={{ marginTop: 16 }}>
-            <select value={category} onChange={e => setCategory(e.target.value)}>
-              <option value="">All categories</option>
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-
-          {upgradePrompt && (
-            <div className="upgrade-box">
-              <p>You've used your free unlock this month. Upgrade for unlimited.</p>
-              <button className="btn btn-clay">Upgrade to Pro</button>
+  if (view === 'signin') return (
+    <div className="app">
+      <Header />
+      <div className="auth-pg" style={{ minHeight: 'calc(100vh - 120px)' }}>
+        <div className="auth-c">
+          <h2>Business sign in</h2><div className="sub">Manage your listing.</div>
+          {authError && <div className="err-box">{authError}</div>}
+          <form onSubmit={handleSignin}>
+            <div style={{ marginBottom: 16 }}>
+              <label className="field-label" style={{ display: 'block', marginBottom: 4 }}>Email</label>
+              <input className="field-input" type="email" required value={form.email} onChange={set('email')} style={{ width: '100%', boxSizing: 'border-box' }} />
             </div>
-          )}
-
-          {listings.length === 0 && (
-            <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px 20px' }}>
-              No listings yet for this category.
-            </div>
-          )}
-
-          {listings.map(l => (
-            <div className="listing" key={l.id}>
-              <div className="listing-top">
-                <div>
-                  <div className="biz">{l.business_name}</div>
-                  <div className="cat-loc">{l.category} · {l.location}</div>
-                </div>
-                {l.verified ? <span className="badge-verified">✓ VERIFIED</span> : null}
-              </div>
-              <Stars rating={l.rating} reviewCount={l.review_count} />
-              {l.description && <div className="desc">{l.description}</div>}
-              <div className="contact-row">
-                {unlocked[l.id] ? (
-                  <span className="contact-revealed">{unlocked[l.id].phone}</span>
-                ) : (
-                  <span className="contact-blurred">+233 •• ••• ••••</span>
-                )}
-                {!unlocked[l.id] && (
-                  <button className="btn-unlock" onClick={() => handleUnlock(l.id)}>Unlock contact</button>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {me && (
-            <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 12, fontFamily: 'var(--fm)', padding: '8px 20px 24px' }}>
-              {me.tier === 'free' ? `${me.unlocks_used}/1 free unlocks used this month` : 'Pro · unlimited unlocks'}
-            </div>
-          )}
-        </div>
-      );
-
-    case 'signin':
-      return (
-        <div className="auth-pg">
-          <div className="auth-c">
-            <h2>Sign in</h2>
-            <div className="sub">Pick up your unlocks where you left off.</div>
-            {authError && <div className="err-box">{authError}</div>}
-            <form onSubmit={e => handleAuth(e, 'signin')}>
-              <label className="field-label">Email</label>
-              <input className="field-input" type="email" required
-                value={authForm.email} onChange={e => setAuthForm({ ...authForm, email: e.target.value })} />
-              
-              <label className="field-label">Password</label>
-              <div style={{ position: 'relative' }}>
-                <input className="field-input" type={showPassword ? "text" : "password"} required
-                  value={authForm.password} onChange={e => setAuthForm({ ...authForm, password: e.target.value })} 
-                  style={{ width: '100%', paddingRight: '50px', boxSizing: 'border-box' }} />
-                <span 
-                  onClick={() => setShowPassword(!showPassword)} 
-                  style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--fm)' }}
-                >
+            
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <label className="field-label" style={{ margin: 0 }}>Password</label>
+                <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: 13, color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--fm)', fontWeight: 500 }}>
                   {showPassword ? "Hide" : "Show"}
                 </span>
               </div>
-              
-              <button className="btn btn-clay" style={{ width: '100%', marginTop: '16px' }} type="submit">Sign in</button>
-            </form>
-            <div className="asw">No account? <a onClick={() => { setView('signup'); setShowPassword(false); }}>Create one</a> · <a onClick={() => setView('landing')}>Back</a></div>
-          </div>
+              <input className="field-input" type={showPassword ? "text" : "password"} required value={form.password} onChange={set('password')} style={{ width: '100%', boxSizing: 'border-box' }} />
+            </div>
+            
+            <button className="btn btn-clay" style={{ width: '100%' }} type="submit">Sign in</button>
+          </form>
+          <div className="asw" style={{ marginTop: 20 }}>No account? <a onClick={() => { setStep(1); setView('signup'); setShowPassword(false); }}>List your business</a> · <a onClick={() => setView('landing')}>Back</a></div>
         </div>
-      );
+      </div>
+      <Footer />
+    </div>
+  );
 
-    case 'signup':
-      return (
-        <div className="auth-pg">
-          <div className="auth-c">
-            <h2>Create your account</h2>
-            <div className="sub">Free to browse. 1 free unlock every month.</div>
-            {authError && <div className="err-box">{authError}</div>}
-            <form onSubmit={e => handleAuth(e, 'signup')}>
-              <label className="field-label">Email</label>
-              <input className="field-input" type="email" required
-                value={authForm.email} onChange={e => setAuthForm({ ...authForm, email: e.target.value })} />
-              
-              <label className="field-label">Password</label>
-              <div style={{ position: 'relative' }}>
-                <input className="field-input" type={showPassword ? "text" : "password"} required minLength={8}
-                  value={authForm.password} onChange={e => setAuthForm({ ...authForm, password: e.target.value })} 
-                  style={{ width: '100%', paddingRight: '50px', boxSizing: 'border-box' }} />
-                <span 
-                  onClick={() => setShowPassword(!showPassword)} 
-                  style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--fm)' }}
-                >
-                  {showPassword ? "Hide" : "Show"}
-                </span>
-              </div>
-              
-              <button className="btn btn-clay" style={{ width: '100%', marginTop: '16px' }} type="submit">Create free account</button>
-            </form>
-            <div className="asw">Have an account? <a onClick={() => { setView('signin'); setShowPassword(false); }}>Sign in</a> · <a onClick={() => setView('landing')}>Back</a></div>
-          </div>
-        </div>
-      );
-
-    default:
-      return null;
-  }
-}
+  if (view === 'signup') {
+    return (
+      <div className="app">
+        <Header />
+        <div className="auth-pg" style={{ minHeight: 'calc(100vh - 120px)' }}>
+          <div
+                                                                             
