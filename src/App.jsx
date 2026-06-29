@@ -21,7 +21,7 @@ export default function App() {
   const [listings, setListings] = useState([]);
   const [category, setCategory] = useState('');
   const [authError, setAuthError] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // New state for password toggle
+  const [showPassword, setShowPassword] = useState(false);
   const [loadedAt] = useState(Date.now());
 
   const [form, setForm] = useState({
@@ -65,7 +65,6 @@ export default function App() {
     } catch { setAuthError('Network error. Try again.'); }
   }
 
-  // Step 1 -> 2 -> creates account (signup.js) -> Step 3 -> 4 -> uploads docs
   async function handleStep2Submit(e) {
     e.preventDefault();
     setAuthError('');
@@ -126,7 +125,11 @@ export default function App() {
   }
   
   function Footer() { 
-    return <div className="footer-bar"><div style={{ opacity: 0.8 }}>Powered by Northbound Holdings</div></div>; 
+    return (
+      <div className="footer-bar">
+        <div style={{ opacity: 0.8, fontSize: '13px' }}>Powered by Northbound Holdings</div>
+      </div>
+    ); 
   }
   
   function Stars({ rating, reviewCount }) {
@@ -176,20 +179,21 @@ export default function App() {
   if (view === 'signin') return (
     <div className="app">
       <Header />
-      <div className="auth-pg" style={{ minHeight: 'calc(100vh - 120px)' }}>
+      <div className="auth-pg" style={{ minHeight: 'calc(100vh - 140px)', padding: '40px 20px' }}>
         <div className="auth-c">
           <h2>Business sign in</h2><div className="sub">Manage your listing.</div>
           {authError && <div className="err-box">{authError}</div>}
+          
           <form onSubmit={handleSignin}>
             <div style={{ marginBottom: 16 }}>
-              <label className="field-label" style={{ display: 'block', marginBottom: 4 }}>Email</label>
+              <label className="field-label" style={{ display: 'block', marginBottom: 6 }}>Email</label>
               <input className="field-input" type="email" required value={form.email} onChange={set('email')} style={{ width: '100%', boxSizing: 'border-box' }} />
             </div>
             
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <label className="field-label" style={{ margin: 0 }}>Password</label>
-                <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: 13, color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--fm)', fontWeight: 500 }}>
+                <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: 13, color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>
                   {showPassword ? "Hide" : "Show"}
                 </span>
               </div>
@@ -198,7 +202,11 @@ export default function App() {
             
             <button className="btn btn-clay" style={{ width: '100%' }} type="submit">Sign in</button>
           </form>
-          <div className="asw" style={{ marginTop: 20 }}>No account? <a onClick={() => { setStep(1); setView('signup'); setShowPassword(false); }}>List your business</a> · <a onClick={() => setView('landing')}>Back</a></div>
+          
+          <div className="asw" style={{ marginTop: 24, textAlign: 'center' }}>
+            No account? <a onClick={() => { setStep(1); setView('signup'); setShowPassword(false); }}>List your business</a><br/>
+            <a onClick={() => setView('landing')} style={{ display: 'inline-block', marginTop: 12 }}>← Back to home</a>
+          </div>
         </div>
       </div>
       <Footer />
@@ -209,6 +217,153 @@ export default function App() {
     return (
       <div className="app">
         <Header />
-        <div className="auth-pg" style={{ minHeight: 'calc(100vh - 120px)' }}>
-          <div
-        
+        <div className="auth-pg" style={{ minHeight: 'calc(100vh - 140px)', padding: '40px 20px' }}>
+          <div className="auth-c" style={{ maxWidth: 440 }}>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
+              {[1,2,3,4].map(n => <div key={n} style={{ flex: 1, height: 4, borderRadius: 2, background: n <= step ? 'var(--clay)' : 'var(--border)', transition: 'background 0.3s ease' }} />)}
+            </div>
+            
+            {authError && <div className="err-box">{authError}</div>}
+
+            {step === 1 && (
+              <>
+                <h2>Step 1 — Bio & contact</h2>
+                <div className="sub" style={{ marginBottom: 24 }}>Your full legal name, not a business alias — this must match your ID.</div>
+                
+                <div style={{ marginBottom: 16 }}>
+                  <label className="field-label" style={{ display: 'block', marginBottom: 6 }}>Full legal name</label>
+                  <input className="field-input" required value={form.fullLegalName} onChange={set('fullLegalName')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                </div>
+                
+                <div style={{ marginBottom: 16 }}>
+                  <label className="field-label" style={{ display: 'block', marginBottom: 6 }}>Profile photo (real photo, no avatars/logos)</label>
+                  <input className="field-input" type="file" accept="image/*" onChange={setFile('profilePhoto')} style={{ width: '100%', boxSizing: 'border-box', padding: '8px' }} />
+                </div>
+                
+                <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+                  <div style={{ flex: 1 }}>
+                    <label className="field-label" style={{ display: 'block', marginBottom: 6 }}>Phone</label>
+                    <input className="field-input" required placeholder="+233..." value={form.phone} onChange={set('phone')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label className="field-label" style={{ display: 'block', marginBottom: 6 }}>WhatsApp <span style={{opacity: 0.6}}>(opt)</span></label>
+                    <input className="field-input" value={form.whatsapp} onChange={set('whatsapp')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+                
+                <div style={{ marginBottom: 16 }}>
+                  <label className="field-label" style={{ display: 'block', marginBottom: 6 }}>Email</label>
+                  <input className="field-input" type="email" required value={form.email} onChange={set('email')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                </div>
+                
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label className="field-label" style={{ margin: 0 }}>Password</label>
+                    <span onClick={() => setShowPassword(!showPassword)} style={{ fontSize: 13, color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}>
+                      {showPassword ? "Hide" : "Show"}
+                    </span>
+                  </div>
+                  <input className="field-input" type={showPassword ? "text" : "password"} required minLength={8} value={form.password} onChange={set('password')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                </div>
+                
+                <button className="btn btn-clay" style={{ width: '100%' }}
+                  onClick={() => { if (form.fullLegalName && form.phone && form.email && form.password.length >= 8) setStep(2); else setAuthError('Fill in all required fields. Password must be 8+ characters.'); }}>
+                  Continue
+                </button>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <h2>Step 2 — Business & location</h2>
+                <div className="sub" style={{ marginBottom: 24 }}>Tell customers what you do and where to find you.</div>
+                
+                <div style={{ marginBottom: 16 }}>
+                  <label className="field-label" style={{ display: 'block', marginBottom: 6 }}>Business name</label>
+                  <input className="field-input" required value={form.businessName} onChange={set('businessName')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                </div>
+                
+                <div style={{ marginBottom: 16 }}>
+                  <label className="field-label" style={{ display: 'block', marginBottom: 6 }}>Category</label>
+                  <select className="field-input" value={form.category} onChange={set('category')} style={{ width: '100%', boxSizing: 'border-box', backgroundColor: '#fff' }}>
+                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                
+                <div style={{ marginBottom: 16 }}>
+                  <label className="field-label" style={{ display: 'block', marginBottom: 6 }}>Description</label>
+                  <textarea className="field-input" rows="3" placeholder="What you do, your experience, specialties..." value={form.description} onChange={set('description')} style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }} />
+                </div>
+                
+                <div style={{ marginBottom: 24 }}>
+                  <label className="field-label" style={{ display: 'block', marginBottom: 6 }}>Ghana Post GPS address</label>
+                  <input className="field-input" placeholder="e.g. GA-184-9008" value={form.ghpostGps} onChange={set('ghpostGps')} style={{ width: '100%', boxSizing: 'border-box' }} />
+                </div>
+                
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button className="btn" style={{ flex: 1, backgroundColor: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }} onClick={() => setStep(1)}>Back</button>
+                  <button className="btn btn-clay" style={{ flex: 2 }} onClick={handleStep2Submit}>Continue</button>
+                </div>
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <h2>Step 3 — Identity verification</h2>
+                <div className="sub" style={{ marginBottom: 24 }}>Ghana Card or Voter's ID required. This goes to a private, encrypted storage bucket — never shown publicly.</div>
+                
+                <div style={{ marginBottom: 16 }}>
+                  <label className="field-label" style={{ display: 'block', marginBottom: 6 }}>ID — front</label>
+                  <input className="field-input" type="file" accept="image/*" required onChange={setFile('idDocFront')} style={{ width: '100%', boxSizing: 'border-box', padding: '8px' }} />
+                </div>
+                
+                <div style={{ marginBottom: 16 }}>
+                  <label className="field-label" style={{ display: 'block', marginBottom: 6 }}>ID — back</label>
+                  <input className="field-input" type="file" accept="image/*" required onChange={setFile('idDocBack')} style={{ width: '100%', boxSizing: 'border-box', padding: '8px' }} />
+                </div>
+                
+                <div style={{ marginBottom: 16 }}>
+                  <label className="field-label" style={{ display: 'block', marginBottom: 6 }}>Selfie holding your ID next to your face</label>
+                  <input className="field-input" type="file" accept="image/*" required onChange={setFile('livenessSelfie')} style={{ width: '100%', boxSizing: 'border-box', padding: '8px' }} />
+                </div>
+                
+                <div style={{ marginBottom: 24 }}>
+                  <label className="field-label" style={{ display: 'block', marginBottom: 6 }}>Professional license <span style={{opacity: 0.6}}>(specialized trades only)</span></label>
+                  <input className="field-input" type="file" accept="image/*" onChange={setFile('professionalLicense')} style={{ width: '100%', boxSizing: 'border-box', padding: '8px' }} />
+                </div>
+                
+                <button className="btn btn-clay" style={{ width: '100%' }}
+                  onClick={() => { if (form.idDocFront && form.idDocBack && form.livenessSelfie) setStep(4); else setAuthError('ID front, back, and selfie are all required.'); }}>
+                  Continue
+                </button>
+              </>
+            )}
+
+            {step === 4 && (
+              <>
+                <h2>Step 4 — The pledge</h2>
+                <div className="sub" style={{ marginBottom: 24 }}>
+                  Last step. Read carefully — this is binding.
+                </div>
+                
+                <div style={{ padding: '16px', backgroundColor: '#fff5f5', borderLeft: '4px solid #ff4444', borderRadius: '4px', marginBottom: 24 }}>
+                  <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: 14, color: '#333', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={form.pledgeAccepted} onChange={e => setForm({ ...form, pledgeAccepted: e.target.checked })} style={{ marginTop: 4, transform: 'scale(1.2)' }} />
+                    <span style={{ lineHeight: 1.5 }}>I understand that any verified report of scamming, fraud, or misrepresentation on this platform will result in immediate, permanent removal of my listing, permanent blacklisting of my phone number from this platform, and may be reported to local authorities.</span>
+                  </label>
+                </div>
+                
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button className="btn" style={{ flex: 1, backgroundColor: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }} onClick={() => setStep(3)}>Back</button>
+                  <button className="btn btn-clay" style={{ flex: 2, opacity: form.pledgeAccepted ? 1 : 0.6 }} disabled={!form.pledgeAccepted} onClick={handleFinalSubmit}>Submit for review</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  i
