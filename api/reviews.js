@@ -1,10 +1,8 @@
 // api/reviews.js
-// GET  ?business_id=...           -> list published reviews for a business
-// POST { business_id, unlock_id, reviewer_name, rating, comment }
-//      -> submit a review. Only allowed if unlock_id points to a real,
-//         successful unlock for that exact business — this is the entire
-//         fraud-prevention mechanism. No account system, no captcha needed:
-//         you can't review a business you never paid to unlock.
+// GET  ?business_id=...  → list published reviews for a business
+// POST { business_id, reviewer_name, rating, comment, unlock_id? }
+//      → submit a review. unlock_id is optional at launch (contacts are free).
+//        If provided, it is validated against the unlocks table for integrity.
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -41,12 +39,12 @@ export default async function handler(req, res) {
     try {
       const { business_id, unlock_id, reviewer_name, rating, comment } = req.body;
 
-      if (!business_id || !unlock_id || !reviewer_name || !rating) {
+      if (!business_id || !reviewer_name || !rating) {
         return res.status(400).json({ error: 'Missing required fields.' });
       }
       const numericRating = Number(rating);
       if (!Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
-        return res.status(400).json({ error: 'Rating must be 1-5.' });
+        return res.status(400).json({ error: 'Rating must be 1–5.' });
       }
       if (reviewer_name.length > 80) {
         return res.status(400).json({ error: 'Name too long.' });
@@ -55,25 +53,27 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: `Review must be under ${MAX_COMMENT_LENGTH} characters.` });
       }
 
-      // The integrity check: unlock must exist, be successful, and match
-      // this exact business. Without this, anyone could fabricate a review.
-      const { data: unlock } = await supabase
-        .from('unlocks')
-        .select('id, business_id, status')
-        .eq('id', unlock_id)
-        .eq('business_id', business_id)
-        .eq('status', 'success')
-        .maybeSingle();
+      // If an unlock_id was supplied, validate it matches this business.
+      // At launch contacts are free so unlock_id may be omitted.
+      if (unlock_id) {
+        const { data: unlock } = await supabase
+          .from('unlocks')
+          .select('id')
+          .eq('id', unlock_id)
+          .eq('business_id', business_id)
+          .eq('status', 'success')
+          .maybeSingle();
 
-      if (!unlock) {
-        return res.status(403).json({ error: 'Reviews can only be left after unlocking a verified contact.' });
+        if (!unlock) {
+          return res.status(403).json({ error: 'Invalid unlock reference.' });
+        }
       }
 
       const { data: review, error: insertError } = await supabase
         .from('reviews')
         .insert({
           business_id,
-          unlock_id,
+          unlock_id: unlock_id || null,
           reviewer_name: reviewer_name.trim(),
           rating: numericRating,
           comment: comment?.trim() || null,
@@ -82,13 +82,7 @@ export default async function handler(req, res) {
         .select('id, reviewer_name, rating, comment, created_at')
         .single();
 
-      if (insertError) {
-        // Unique index on unlock_id — one review per unlock
-        if (insertError.code === '23505') {
-          return res.status(409).json({ error: 'You already reviewed this business.' });
-        }
-        throw insertError;
-      }
+      if (insertError) throw insertError;
 
       return res.status(200).json({ review });
     } catch (err) {
@@ -99,4 +93,3 @@ export default async function handler(req, res) {
 
   return res.status(405).json({ error: 'Method not allowed' });
 }
-
